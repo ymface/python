@@ -14,9 +14,9 @@ import math
 # ==========================================
 #  설정 및 상수 (Configuration)
 # ==========================================
-HOST_IP = '127.0.0.1'  # 기본 아이피 (로컬호스트)
-PORT = 9999            # 포트 번호
-PAYLOAD_SIZE = struct.calcsize("Q")
+SERVER_IP = '127.0.0.1'  # 기본 아이피 (로컬호스트)
+SERVER_PORT = 9999            # 포트 번호
+HEADER_SIZE = struct.calcsize("Q")
 BLOCK_SIZE = 4096
 
 class VideoNetProUltimate:
@@ -60,7 +60,7 @@ class VideoNetProUltimate:
         
         tk.Label(group_conn, text="Target IP:").pack(side=tk.LEFT)
         self.ip_entry = tk.Entry(group_conn, width=12)
-        self.ip_entry.insert(0, HOST_IP)
+        self.ip_entry.insert(0, SERVER_IP)
         self.ip_entry.pack(side=tk.LEFT, padx=2)
         
         tk.Button(group_conn, text="Connect(Tx)", command=self.connect_to_server, bg="#ccffcc").pack(side=tk.LEFT, padx=2)
@@ -153,7 +153,7 @@ class VideoNetProUltimate:
                 self.file_path = path
                 # 이미지는 한 번 읽어서 메모리에 둠
                 img = cv2.imread(path)
-                self.static_image = cv2.resize(img, (640, 480))
+                self.static_image = cv2.resize(img, (320, 240))
                 self.status_bar.config(text=f"Loaded Image: {os.path.basename(path)}")
         elif self.mode == "AUDIO_VIS":
             messagebox.showinfo("Audio", "Audio Visualizer Mode Enabled. (Generating Synthetic Waves)")
@@ -213,6 +213,7 @@ class VideoNetProUltimate:
     def start_local_loop(self):
         self.is_running = True
         self.process_stream()
+        self.recv_stream()
 
     def process_stream(self):
         if not self.is_running: return
@@ -259,7 +260,6 @@ class VideoNetProUltimate:
 
         # 약 30 FPS
         self.root.after(33, self.process_stream)
-        self.root.after(15, self.recv_stream)
 
     def display_frame(self, frame, label_widget):
         # BGR to RGB
@@ -301,9 +301,9 @@ class VideoNetProUltimate:
     # remote 수신
     def recv_stream(self):
         try:
-            payload = self.client_socket.recv(PAYLOAD_SIZE)
+            header = self.client_socket.recv(HEADER_SIZE)
             
-            data_size = struct.unpack("Q", payload)[0]
+            data_size = struct.unpack("Q", header)[0]
             if data_size == 0: return
             
             block_cnt = int(data_size / BLOCK_SIZE)
@@ -326,7 +326,7 @@ class VideoNetProUltimate:
             # 메인 스레드가 아니므로 invoke 사용 권장하지만 간단한 데모라 직접 호출
             if img is not None:
                 self.display_frame(img, self.lbl_remote)
-                        
+            self.root.after(5, self.recv_stream)
         except Exception as e:
             print(f"Rx Error: {e}")
             
@@ -335,7 +335,7 @@ class VideoNetProUltimate:
         ip = self.ip_entry.get()
         try:
             self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.client_socket.connect((ip, PORT))
+            self.client_socket.connect((ip, SERVER_PORT))
             self.is_sending = True
             self.start_time = time.time()
             self.total_sent_bytes = 0
