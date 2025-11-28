@@ -6,6 +6,7 @@ import tkinter as tk
 
 class Server:
     def __init__(self):
+        self.server_ip = socket.gethostbyname(socket.gethostname())
         self.server_thread = None
         self.client_0_thread = None
         self.client_1_thread = None
@@ -44,9 +45,9 @@ class Server:
     
     def server_listener(self):
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket.bind((SERVER_IP, SERVER_PORT))
+        server_socket.bind((self.server_ip, SERVER_PORT))
         server_socket.listen(2)
-        print("# server listen on port {}".format(SERVER_PORT))
+        print("# server start on {}:{}".format(self.server_ip, SERVER_PORT))
 
         while True:
             if (self.client_0_thread != None) and (self.client_1_thread != None): continue
